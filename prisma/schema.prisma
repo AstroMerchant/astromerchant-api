@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Merchant {
+  id        String   @id @default(uuid())
+  companyName String  @map("company_name")
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users     User[]
+  wallets   Wallet[]
+  invoices  Invoice[]
+  payments  Payment[]
+  transactions Transaction[]
+  webhooks  Webhook[]
+  apiKeys   ApiKey[]
+
+  @@map("merchants")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  merchantId String   @map("merchant_id")
+  name       String
+  email      String
+  role       String   @default("OWNER")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("users")
+}
+
+model Wallet {
+  id         String   @id @default(uuid())
+  merchantId String   @map("merchant_id")
+  publicKey  String   @map("public_key")
+  assetCode  String   @default("XLM") @map("asset_code")
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("wallets")
+}
+
+model Invoice {
+  id            String   @id @default(uuid())
+  merchantId    String   @map("merchant_id")
+  invoiceNumber String   @unique @map("invoice_number")
+  customerName  String   @map("customer_name")
+  customerEmail String   @map("customer_email")
+  amount        Float
+  asset         String   @default("XLM")
+  status        String   @default("PENDING")
+  dueDate       DateTime @map("due_date")
+  description   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  merchant      Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  payments      Payment[]
+
+  @@map("invoices")
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  merchantId        String   @map("merchant_id")
+  invoiceId         String?  @map("invoice_id")
+  transactionId     String   @map("transaction_id")
+  amount            Float
+  asset             String   @default("XLM")
+  status            String   @default("PENDING")
+  sourceAddress     String   @map("source_address")
+  destinationAddress String  @map("destination_address")
+  memo              String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  merchant          Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  invoice           Invoice? @relation(fields: [invoiceId], references: [id])
+
+  @@map("payments")
+}
+
+model Transaction {
+  id                     String   @id @default(uuid())
+  merchantId             String   @map("merchant_id")
+  stellarTransactionHash String   @map("stellar_transaction_hash")
+  operationType          String   @map("operation_type")
+  amount                 Float
+  asset                  String   @default("XLM")
+  sourceAccount          String   @map("source_account")
+  destinationAccount     String   @map("destination_account")
+  status                 String   @default("PENDING")
+  memo                   String?
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  merchant               Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
+}
+
+model Webhook {
+  id         String   @id @default(uuid())
+  merchantId String   @map("merchant_id")
+  url        String
+  events     String
+  isActive   Boolean  @default(true) @map("is_active")
+  secret     String
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("webhooks")
+}
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  merchantId String    @map("merchant_id")
+  name       String
+  key        String    @unique
+  prefix     String
+  isActive   Boolean   @default(true) @map("is_active")
+  lastUsedAt DateTime? @map("last_used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  expiresAt  DateTime? @map("expires_at")
+
+  merchant   Merchant  @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
